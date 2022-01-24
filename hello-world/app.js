@@ -1,33 +1,54 @@
-// const axios = require('axios')
-// const url = 'http://checkip.amazonaws.com/';
-let response;
+"use strict";
+// Import the dependency.
+const clientPromise = require('./mongodb-client');
+// Handler
+module.exports.lambdaHandler = async function (event, context) {
+  // Get the MongoClient by calling await on the connection promise. Because
+  // this is a promise, it will only resolve once.
+  const client = await clientPromise;
+  // Use the connection to return the name of the connected database.
 
-/**
- *
- * Event doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
- * @param {Object} event - API Gateway Lambda Proxy Input Format
- *
- * Context doc: https://docs.aws.amazon.com/lambda/latest/dg/nodejs-prog-model-context.html 
- * @param {Object} context
- *
- * Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
- * @returns {Object} object - API Gateway Lambda Proxy Output Format
- * 
- */
-exports.lambdaHandler = async (event, context) => {
-    try {
-        // const ret = await axios(url);
-        response = {
-            'statusCode': 200,
-            'body': JSON.stringify({
-                message: 'hello world',
-                // location: ret.data.trim()
-            })
-        }
-    } catch (err) {
-        console.log(err);
-        return err;
-    }
+  // console.log(event.resource);
 
-    return response
-};
+  // console.log('Found documents =>', findResult);
+
+  let response = "";
+
+  console.log(event.httpMethod);
+  console.log(event.body);
+
+  if (event.resource === '/posts' && event.httpMethod == 'GET') {
+    response = await getPosts(client);
+  }
+
+  else if (event.resource === '/posts' && event.httpMethod == 'POST') {
+    let _post = JSON.parse(event.body);
+
+    response = await insertPost(client, _post);
+  }
+
+  return {
+    statusCode: 200,
+    headers: {
+      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST"
+    },
+    body: JSON.stringify({
+      data: response,
+    })
+  }
+
+}
+
+function getPosts(dbClient) {
+  const posts = dbClient.db().collection('posts');
+
+  return posts.find({}).toArray();
+}
+
+function insertPost(dbClient, post) {
+  const posts = dbClient.db().collection('posts');
+
+  return posts.insertOne(post);
+}
